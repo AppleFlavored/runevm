@@ -55,22 +55,7 @@ pub fn read_attributes<R: Read>(r: &mut R, pool: &ConstantPool) -> Result<Vec<At
                 let mut code = Vec::with_capacity(code_length as usize);
                 r.take(code_length as u64).read_to_end(&mut code)?;
 
-                let exception_table_length = r.read_u16::<BigEndian>()?;
-                let mut exceptions = Vec::with_capacity(exception_table_length as usize);
-                for _ in 0..exception_table_length {
-                    let start_pc = r.read_u16::<BigEndian>()?;
-                    let end_pc = r.read_u16::<BigEndian>()?;
-                    let handler_pc = r.read_u16::<BigEndian>()?;
-                    let catch_type = r.read_u16::<BigEndian>()?;
-
-                    exceptions.push(ExceptionTableEntry {
-                        start_pc,
-                        end_pc,
-                        handler_pc,
-                        catch_type,
-                    });
-                }
-
+                let exceptions = read_exception_table(r)?;
                 let attributes = read_attributes(r, pool)?;
 
                 Attribute::Code { max_stack, max_locals, code, exceptions, attributes, }
@@ -106,4 +91,25 @@ pub fn read_attributes<R: Read>(r: &mut R, pool: &ConstantPool) -> Result<Vec<At
     }
 
     Ok(attributes)
+}
+
+fn read_exception_table<R: Read>(r: &mut R) -> Result<Vec<ExceptionTableEntry>, Error> {
+    let exception_table_length = r.read_u16::<BigEndian>()?;
+    let mut exceptions = Vec::with_capacity(exception_table_length as usize);
+    
+    for _ in 0..exception_table_length {
+        let start_pc = r.read_u16::<BigEndian>()?;
+        let end_pc = r.read_u16::<BigEndian>()?;
+        let handler_pc = r.read_u16::<BigEndian>()?;
+        let catch_type = r.read_u16::<BigEndian>()?;
+
+        exceptions.push(ExceptionTableEntry {
+            start_pc,
+            end_pc,
+            handler_pc,
+            catch_type,
+        });
+    }
+
+    Ok(exceptions)
 }
