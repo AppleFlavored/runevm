@@ -3,19 +3,20 @@ use classfile::ClassFile;
 use std::{fs::File, path::PathBuf};
 
 mod classfile;
-mod errors;
 
 #[derive(Parser)]
 struct Args {
     class_file: PathBuf,
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     let args = Args::parse();
-    let mut f = File::open(args.class_file)?;
-    let classfile = ClassFile::new(&mut f)?;
 
-    println!("{classfile:?}");
+    let mut f = match File::open(args.class_file) {
+        Ok(f) => f,
+        Err(e) => panic!("{e}"),
+    };
 
-    Ok(())
+    let classfile = ClassFile::new(&mut f);
+    println!("{classfile:#?}");
 }
