@@ -154,6 +154,31 @@ impl Method {
             attributes,
         })
     }
+
+    /// Returns the max stack and max locals from the code attribute.
+    pub fn maxs(&self) -> Option<(u16, u16)> {
+        for attr in &self.attributes {
+            if let Attribute::Code {
+                max_stack,
+                max_locals,
+                ..
+            } = attr
+            {
+                return Some((*max_stack, *max_locals));
+            }
+        }
+        None
+    }
+
+    /// Returns the bytes of the code implementing the method.
+    pub fn code(&self) -> Option<Vec<u8>> {
+        for attr in &self.attributes {
+            if let Attribute::Code { code, .. } = attr {
+                return Some(code.to_vec());
+            }
+        }
+        None
+    }
 }
 
 bitflags! {
