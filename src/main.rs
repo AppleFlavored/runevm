@@ -1,6 +1,8 @@
 use clap::Parser;
-use runevm_classfile::ClassFile;
+use runevm_classfile::parse_class;
 use std::{fs::File, io::Read, path::PathBuf};
+
+mod runtime;
 
 #[derive(Parser)]
 struct Args {
@@ -19,6 +21,10 @@ fn main() {
     file.read_to_end(&mut buf)
         .expect("could not read class file");
 
-    let classfile = ClassFile::parse(&buf);
-    println!("{classfile:?}");
+    let classfile = match parse_class(buf.as_slice()) {
+        Ok((_, classfile)) => classfile,
+        Err(e) => panic!("{}", e),
+    };
+
+    println!("{classfile:#?}\n");
 }
