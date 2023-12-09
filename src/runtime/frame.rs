@@ -1,5 +1,5 @@
 use super::object::Object;
-use runevm_classfile::{Constant, ConstantPool, Instruction, Method};
+use runevm_classfile::{Constant, ConstantPool, Instruction, MethodInfo};
 
 macro_rules! unwrap_constant {
     ($cp:expr, $method:ident, $idx:expr) => {{
@@ -10,13 +10,13 @@ macro_rules! unwrap_constant {
 
 pub struct Frame {
     constant_pool: ConstantPool,
-    method: Method,
+    method: MethodInfo,
     pc: usize,
     operand_stack: Vec<OperandItem>,
 }
 
 impl Frame {
-    pub fn new(constant_pool: &ConstantPool, method: Method) -> Frame {
+    pub fn new(constant_pool: &ConstantPool, method: MethodInfo) -> Frame {
         Frame {
             constant_pool: constant_pool.clone(),
             method,
@@ -59,7 +59,7 @@ impl Frame {
 }
 
 pub enum FrameResult {
-    NextFrame(Method),
+    NextFrame(MethodInfo),
     Finished,
 }
 

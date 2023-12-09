@@ -156,14 +156,14 @@ fn constant_pool(input: &[u8]) -> IResult<&[u8], ConstantPool> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Field {
+pub struct FieldInfo {
     pub access_flags: FieldAccessFields,
     pub name_index: u16,
     pub descriptor_index: u16,
     pub attributes: Vec<Attribute>,
 }
 
-fn field(pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], Field> {
+fn field(pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], FieldInfo> {
     move |input| {
         map(
             tuple((
@@ -172,7 +172,7 @@ fn field(pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], Field> {
                 be_u16,
                 length_count(be_u16, attribute(pool.clone())),
             )),
-            |(access_flags, name_index, descriptor_index, attributes)| Field {
+            |(access_flags, name_index, descriptor_index, attributes)| FieldInfo {
                 access_flags,
                 name_index,
                 descriptor_index,
@@ -183,14 +183,14 @@ fn field(pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], Field> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Method {
+pub struct MethodInfo {
     pub access_flags: MethodAccessFlags,
     pub name_index: u16,
     pub descriptor_index: u16,
     pub attributes: Vec<Attribute>,
 }
 
-impl Method {
+impl MethodInfo {
     pub fn code(&self) -> &Vec<Instruction> {
         self.attributes
             .iter()
@@ -205,7 +205,7 @@ impl Method {
     }
 }
 
-fn method(pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], Method> {
+fn method(pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], MethodInfo> {
     move |input| {
         map(
             tuple((
@@ -214,7 +214,7 @@ fn method(pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], Method> {
                 be_u16,
                 length_count(be_u16, attribute(pool.clone())),
             )),
-            |(access_flags, name_index, descriptor_index, attributes)| Method {
+            |(access_flags, name_index, descriptor_index, attributes)| MethodInfo {
                 access_flags,
                 name_index,
                 descriptor_index,
@@ -270,13 +270,13 @@ pub struct ClassFile {
     pub this_class: u16,
     pub super_class: u16,
     pub interfaces: Vec<u16>,
-    pub fields: Vec<Field>,
-    pub methods: Vec<Method>,
+    pub fields: Vec<FieldInfo>,
+    pub methods: Vec<MethodInfo>,
     pub attributes: Vec<Attribute>,
 }
 
 impl ClassFile {
-    pub fn get_method(&self, name: &str, descriptor: &str) -> &Method {
+    pub fn get_method(&self, name: &str, descriptor: &str) -> &MethodInfo {
         self.methods
             .iter()
             .find(|method| {

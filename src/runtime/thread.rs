@@ -1,12 +1,12 @@
 use super::frame::{Frame, FrameResult};
-use runevm_classfile::{ConstantPool, Method};
+use runevm_classfile::{ConstantPool, MethodInfo};
 
 pub struct JavaThread {
     stack: Vec<Frame>,
 }
 
 impl JavaThread {
-    pub fn new(constant_pool: &ConstantPool, method: Method) -> JavaThread {
+    pub fn new(constant_pool: &ConstantPool, method: MethodInfo) -> JavaThread {
         let mut stack: Vec<Frame> = Vec::new();
         stack.push(Frame::new(constant_pool, method));
 

@@ -3,7 +3,7 @@ mod parser;
 
 use bitflags::bitflags;
 pub use instructions::Instruction;
-pub use parser::{parse_class, ClassFile, Constant, ConstantPool, Field, Method, Version};
+pub use parser::{parse_class, ClassFile, Constant, ConstantPool, FieldInfo, MethodInfo, Version};
 
 bitflags! {
     pub struct ClassAccessFlags: u16 {
