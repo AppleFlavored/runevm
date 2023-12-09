@@ -91,12 +91,71 @@ fn constant(input: &[u8]) -> IResult<&[u8], Constant> {
     }
 }
 
-fn constant_pool(input: &[u8]) -> IResult<&[u8], Vec<Constant>> {
-    let (input, contant_pool_count) = be_u16(input)?;
-    count(constant, contant_pool_count as usize - 1)(input)
+#[derive(Debug, Clone)]
+pub struct ConstantPool {
+    pub(crate) items: Vec<Constant>,
 }
 
-#[derive(Debug)]
+impl ConstantPool {
+    pub fn get(&self, index: u16) -> &Constant {
+        &self.items[index as usize - 1]
+    }
+
+    pub fn utf8(&self, index: u16) -> &str {
+        match &self.items[index as usize - 1] {
+            Constant::Utf8(data) => data.as_str(),
+            _ => panic!(),
+        }
+    }
+
+    pub fn name_and_type(&self, index: u16) -> (&str, &str) {
+        let (name_index, descriptor_index) = match self.items[index as usize - 1] {
+            Constant::NameAndType {
+                name_index,
+                descriptor_index,
+            } => (name_index, descriptor_index),
+            _ => panic!(),
+        };
+        (self.utf8(name_index), self.utf8(descriptor_index))
+    }
+
+    pub fn class(&self, index: u16) -> &str {
+        let name_index = match self.items[index as usize - 1] {
+            Constant::Class(name_index) => name_index,
+            _ => panic!(),
+        };
+        self.utf8(name_index)
+    }
+
+    pub fn field(&self, index: u16) -> (u16, u16) {
+        match self.items[index as usize - 1] {
+            Constant::Field {
+                class_index,
+                nametype_index,
+            } => (class_index, nametype_index),
+            _ => panic!(),
+        }
+    }
+
+    pub fn method(&self, index: u16) -> (u16, u16) {
+        match self.items[index as usize - 1] {
+            Constant::Method {
+                class_index,
+                nametype_index,
+            } => (class_index, nametype_index),
+            _ => panic!(),
+        }
+    }
+}
+
+fn constant_pool(input: &[u8]) -> IResult<&[u8], ConstantPool> {
+    let (input, contant_pool_count) = be_u16(input)?;
+    map(count(constant, contant_pool_count as usize - 1), |items| {
+        ConstantPool { items }
+    })(input)
+}
+
+#[derive(Debug, Clone)]
 pub struct Field {
     pub access_flags: FieldAccessFields,
     pub name_index: u16,
@@ -104,7 +163,7 @@ pub struct Field {
     pub attributes: Vec<Attribute>,
 }
 
-fn field(pool: Vec<Constant>) -> impl Fn(&[u8]) -> IResult<&[u8], Field> {
+fn field(pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], Field> {
     move |input| {
         map(
             tuple((
@@ -123,7 +182,7 @@ fn field(pool: Vec<Constant>) -> impl Fn(&[u8]) -> IResult<&[u8], Field> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Method {
     pub access_flags: MethodAccessFlags,
     pub name_index: u16,
@@ -131,7 +190,22 @@ pub struct Method {
     pub attributes: Vec<Attribute>,
 }
 
-fn method(pool: Vec<Constant>) -> impl Fn(&[u8]) -> IResult<&[u8], Method> {
+impl Method {
+    pub fn code(&self) -> &Vec<Instruction> {
+        self.attributes
+            .iter()
+            .find_map(|attr| {
+                if let Attribute::Code { code, .. } = attr {
+                    Some(code)
+                } else {
+                    None
+                }
+            })
+            .unwrap() // This is fine for now...
+    }
+}
+
+fn method(pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], Method> {
     move |input| {
         map(
             tuple((
@@ -161,12 +235,12 @@ pub enum Attribute {
     Unknown(u16),
 }
 
-fn attribute(constant_pool: Vec<Constant>) -> impl Fn(&[u8]) -> IResult<&[u8], Attribute> {
+fn attribute(constant_pool: ConstantPool) -> impl Fn(&[u8]) -> IResult<&[u8], Attribute> {
     move |input| {
         let (input, name_index) = be_u16(input)?;
         let (remaining, attribute_data) = length_data(be_u32)(input)?;
 
-        if let Constant::Utf8(str) = &constant_pool[name_index as usize - 1] {
+        if let Constant::Utf8(str) = &constant_pool.items[name_index as usize - 1] {
             let (_, attr) = match str.as_str() {
                 "ConstantValue" => {
                     map(be_u16, |index| Attribute::ConstantValue(index))(attribute_data)?
@@ -191,7 +265,7 @@ fn attribute(constant_pool: Vec<Constant>) -> impl Fn(&[u8]) -> IResult<&[u8], A
 #[derive(Debug)]
 pub struct ClassFile {
     pub version: Version,
-    pub constant_pool: Vec<Constant>,
+    pub constant_pool: ConstantPool,
     pub access_flags: ClassAccessFlags,
     pub this_class: u16,
     pub super_class: u16,
@@ -199,6 +273,19 @@ pub struct ClassFile {
     pub fields: Vec<Field>,
     pub methods: Vec<Method>,
     pub attributes: Vec<Attribute>,
+}
+
+impl ClassFile {
+    pub fn get_method(&self, name: &str, descriptor: &str) -> &Method {
+        self.methods
+            .iter()
+            .find(|method| {
+                let method_name = self.constant_pool.utf8(method.name_index);
+                let method_descriptor = self.constant_pool.utf8(method.descriptor_index);
+                method_name == name && method_descriptor == descriptor
+            })
+            .unwrap() // This is fine for now; this should only be used to get a known method.
+    }
 }
 
 pub fn parse_class(input: &[u8]) -> IResult<&[u8], ClassFile> {

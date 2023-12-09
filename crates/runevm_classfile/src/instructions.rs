@@ -1,4 +1,8 @@
-use nom::{combinator::{success, map}, number::complete::{be_u8, be_u16}, IResult};
+use nom::{
+    combinator::{map, success},
+    number::complete::{be_u16, be_u8},
+    IResult,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Instruction {
