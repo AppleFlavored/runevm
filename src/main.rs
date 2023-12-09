@@ -1,3 +1,4 @@
+use crate::runtime::{object::Object, thread::JavaThread};
 use clap::Parser;
 use runevm_classfile::parse_class;
 use std::{fs::File, io::Read, path::PathBuf};
@@ -26,5 +27,7 @@ fn main() {
         Err(e) => panic!("{}", e),
     };
 
-    println!("{classfile:#?}\n");
+    let main_method = classfile.get_method("main", "([Ljava/lang/String;)V");
+    let mut thread = JavaThread::new(&classfile.constant_pool, main_method.clone());
+    thread.run();
 }
