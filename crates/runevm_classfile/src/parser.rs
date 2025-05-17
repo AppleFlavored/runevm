@@ -108,6 +108,13 @@ impl ConstantPool {
         }
     }
 
+    pub fn integer(&self, index: u16) -> i32 {
+        match self.items[index as usize - 1] {
+            Constant::Integer(value) => value,
+            _ => panic!(),
+        }
+    }
+
     pub fn name_and_type(&self, index: u16) -> (&str, &str) {
         let (name_index, descriptor_index) = match self.items[index as usize - 1] {
             Constant::NameAndType {

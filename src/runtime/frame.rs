@@ -25,7 +25,7 @@ impl Frame {
         }
     }
 
-    pub fn execute(&mut self) -> FrameResult {
+    pub fn execute(&mut self) -> Result<FrameResult, FrameError> {
         let code = self.method.code();
 
         while self.pc < code.len() {
@@ -40,13 +40,29 @@ impl Frame {
                 Instruction::Ldc(index) => match self.constant_pool.get(index as u16) {
                     Constant::String(string_index) => {
                         print!("\"{}\"", self.constant_pool.utf8(*string_index));
-                    }
+                    },
+                    Constant::Integer(value) => {
+                        self.operand_stack.push(OperandItem::Integer(*value));
+                    },
                     _ => todo!(),
+                },
+                Instruction::Bipush(value) => {
+                    self.operand_stack.push(OperandItem::Integer(value as i32));
+
+                },
+                Instruction::Istore(index) => {
+                    let value = self.operand_stack.pop().ok_or(FrameError::StackUnderflow)?;
+                    if let OperandItem::Integer(value) = value {
+                        print!("{} = {}", index, value);
+                        // TODO: Store value in local variable
+                    } else {
+                        panic!("Expected integer, got {value:?}")
+                    }
                 },
                 Instruction::Invokevirtual(index) => {
                     let (class, name_and_type) = unwrap_constant!(self.constant_pool, method, index);
                     print!("{} {} {}", class, name_and_type.0, name_and_type.1);
-                }
+                },
                 _ => {}
             }
 
@@ -54,7 +70,7 @@ impl Frame {
             self.pc += 1;
         }
 
-        FrameResult::Finished
+        Ok(FrameResult::Finished)
     }
 }
 
@@ -63,6 +79,7 @@ pub enum FrameResult {
     Finished,
 }
 
+#[derive(Debug)]
 pub enum OperandItem {
     Integer(i32),
     Float(f32),
@@ -70,4 +87,9 @@ pub enum OperandItem {
     Double(f64),
     Reference(Object),
     Padding,
+}
+
+#[derive(Debug)]
+pub enum FrameError {
+    StackUnderflow,
 }

@@ -18,8 +18,11 @@ impl JavaThread {
             let mut current = self.stack.pop().unwrap();
 
             match current.execute() {
-                FrameResult::NextFrame(_) => todo!(),
-                FrameResult::Finished => {}
+                Ok(res) => match res {
+                    FrameResult::NextFrame(_) => todo!(),
+                    FrameResult::Finished => {}
+                }
+                Err(err) => panic!("{err:?}"),
             }
         }
     }

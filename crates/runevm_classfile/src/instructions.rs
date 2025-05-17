@@ -109,7 +109,7 @@ pub enum Instruction {
     Ireturn,
     Ishl,
     Ishr,
-    Istore,
+    Istore(u8),
     Isub,
     Iushr,
     Ixor,
@@ -176,11 +176,16 @@ pub enum ComparisonKind {
 pub(crate) fn instruction(input: &[u8]) -> IResult<&[u8], Instruction> {
     let (input, opcode) = be_u8(input)?;
     match opcode {
+        0x10 => map(be_u8, |value| Instruction::Bipush(value))(input),
         0x32 => zero_operands(Instruction::Aaload)(input),
         0x53 => zero_operands(Instruction::Aastore)(input),
         0x1 => zero_operands(Instruction::AconstNull)(input),
         0x19 => map(be_u8, |index| Instruction::Aload(index))(input),
         0x2a..=0x2d => zero_operands(Instruction::Aload(opcode - 42))(input),
+        0x36 => map(be_u8, |index| Instruction::Istore(index))(input),
+        0x3b..=0x3e => zero_operands(Instruction::Istore(opcode - 59))(input),
+        0x15 => map(be_u8, |index| Instruction::Iload(index))(input),
+        0x1a..=0x1d => zero_operands(Instruction::Iload(opcode - 26))(input),
         0xb1 => zero_operands(Instruction::Return)(input),
         0xb2 => map(be_u16, |index| Instruction::Getstatic(index))(input),
         0x12 => map(be_u8, |index| Instruction::Ldc(index))(input),
